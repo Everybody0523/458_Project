@@ -29,8 +29,27 @@ def getLengthIP():
     return lens 
 
 
+def getLengthTCP():
+    packets = rdpcap('traces/sample_pkts')
+    lens = []    
+    for p in packets:
+        if (TCP in p):
+            lens.append(len(TCP(p)))
+    return lens 
+       
+
+def getLengthUDP():
+    packets = rdpcap('traces/sample_pkts')
+    lens = []    
+    for p in packets:
+        if (UDP in p):
+            lens.append(len(UDP(p)))
+    return lens 
+
+
+
 if __name__ == "__main__":
-    lengths = getLengthIP()
+    lengths = getLengthUDP()
     # evaluate the histogram
     values, base = np.histogram(lengths, bins=40)
     #evaluate the cumulative
