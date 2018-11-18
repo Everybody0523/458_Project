@@ -1,7 +1,10 @@
 from scapy.all import *
+import numpy as np
+import matplotlib.pyplot as plt
 
 
 def getLengthNonIP():
+    packets = rdpcap('traces/sample_pkts')
     lens = []
     counter = 0
     nonIPs = 0
@@ -17,22 +20,22 @@ def getLengthNonIP():
     print lens
 
 
-if __name__ == "__main__":
+def getLengthIP():
     packets = rdpcap('traces/sample_pkts')
-    nums = [458, 369, 411, 523, 901, 1, 17, 55]
-    #for num in nums:
-    #    packets[num].show()
-    lens = []
-    counter = 0
-    nonIPs = 0
+    lens = []    
     for p in packets:
-        if ((IP in p)):
-            p.show()
-            print counter
-            print "---------------------------------------------------"
-            nonIPs += 1
+        if (IP in p):
             lens.append(len(IP(p)))
-        counter += 1
-    print "Found " + str(nonIPs) + " IP packets"
-    print lens
-     
+    return lens 
+
+
+if __name__ == "__main__":
+    lengths = getLengthIP()
+    # evaluate the histogram
+    values, base = np.histogram(lengths, bins=40)
+    #evaluate the cumulative
+    cumulative = np.cumsum(values)
+    # plot the cumulative function
+    plt.plot(base[:-1], cumulative, c='blue')
+    plt.show()
+
