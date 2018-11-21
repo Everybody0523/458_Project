@@ -17,6 +17,7 @@ def process_packet(packet):
         print packet.show()
     return link_name, network_name, transport_name
 
+
 def process_packets(infile):
     pkts = scapy.rdpcap(infile)
     protocol_types = {}
@@ -28,6 +29,7 @@ def process_packets(infile):
             protocol_types[(link_type, network_type, transport_type)] += 1
     for link_type, network_type, transport_type in sorted(protocol_types.keys()):
         print 'link_type:{0} network_type:{1} transport_type={2}, count={3}'.format(link_type, network_type, transport_type, protocol_types[(link_type, network_type, transport_type)])
+
 
 if __name__ == '__main__':
     process_packets(sys.argv[1])
