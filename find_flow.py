@@ -28,6 +28,9 @@ def inet_to_str(inet):
     except ValueError:
         return socket.inet_ntop(socket.AF_INET6, inet)
 
+def to_percentage(numerator, denominator):
+    return (float(numerator) / denominator) * 100
+
 def add_flow_packet(flow_dict, src, dst, src_port, dst_port, time):
     # packets from A to B and from B to A belong to the same flow
     key = (src, dst, src_port, dst_port)
@@ -86,18 +89,40 @@ def find_flows(pcap):
                 dst_port = udp.dport
                 add_flow_packet(udp_flows, src, dst, src_port, dst_port, time)
 
-    for flow in tcp_flows.keys():
-        src, dst, src_port, src_dst = flow
-        num_pkts, start_time, end_time = tcp_flows[flow]
-        duration = end_time - start_time
-        print '{0}:{2}->{1}:{3} num_pkts={4} duration={5}'.format(src, dst, src_port, src_dst, num_pkts, duration)
+    return tcp_flows, udp_flows
+    #  for flow in tcp_flows.keys():
+        #  src, dst, src_port, src_dst = flow
+        #  num_pkts, start_time, end_time = tcp_flows[flow]
+        #  duration = end_time - start_time
+        #  print '{0}:{2}->{1}:{3} num_pkts={4} duration={5}'.format(src, dst, src_port, src_dst, num_pkts, duration)
 
+def flow_counts(tcp_flows, udp_flows):
+    tcp_flow_count = len(tcp_flows)
+    udp_flow_count = len(udp_flows)
+    total_flow_count = tcp_flow_count + udp_flow_count
+    print '{0} TCP flows {1}'.format(tcp_flow_count, to_percentage(tcp_flow_count, total_flow_count))
+    print '{0} UDP flows {1}'.format(udp_flow_count, to_percentage(udp_flow_count, total_flow_count))
+    total_tcp_count = 0
+    for flow in tcp_flows.keys():
+        count = tcp_flows[flow][0]
+        total_tcp_count += count
+    total_udp_count = 0
+    for flow in udp_flows.keys():
+        count = udp_flows[flow][0]
+        total_udp_count += count
+    total_packet_count = total_tcp_count + total_udp_count
+    print 'Total number of packets in TCP flows: {0} {1}%'.format(total_tcp_count, to_percentage(total_tcp_count, total_packet_count))
+    print 'Total number of packets in UDP flows: {0} {1}%'.format(total_udp_count, to_percentage(total_udp_count, total_packet_count))
+
+def flow_durations(flows):
+    pass
 
 def test():
     """Open up a test pcap file and print out the packets"""
     with open(sys.argv[1], 'rb') as f:
         pcap = dpkt.pcap.Reader(f)
-        find_flows(pcap)
+        tcp_flows, udp_flows = find_flows(pcap)
+        flow_counts(tcp_flows, udp_flows)
 
 
 if __name__ == '__main__':
