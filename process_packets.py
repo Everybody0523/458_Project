@@ -45,6 +45,11 @@ def print_protocol_count(protocol_dict, number_packets):
 
 
 def process_packets(infile):
+    """
+    Open the pcap file specified by infile and print information about the packets.
+    Returns the types of protocols, the link protocols, the network protocols, and the transport protocols
+    in that order. 
+    """
     pkts = scapy.rdpcap(infile)
     number_packets = len(pkts)
     protocol_types = {}
@@ -68,6 +73,7 @@ def process_packets(infile):
     print_protocol_count(network_protocols, number_packets)
     print '\nTransport layer:'
     print_protocol_count(transport_protocols, number_packets)
+    return protocol_types, link_protocols, network_protocols, transport_protocols
 
 
 if __name__ == '__main__':
