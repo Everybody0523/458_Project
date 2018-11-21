@@ -3,6 +3,7 @@ import sys
 import datetime
 import socket
 from dpkt.compat import compat_ord
+import grapher
 
 
 def mac_addr(address):
@@ -59,6 +60,7 @@ def add_flow_packet(flow_dict, src, dst, src_port, dst_port, time):
 
 
 def find_flows(pcap):
+    all_flows = {}
     tcp_flows = {}
     udp_flows = {}
     # For each packet in the pcap determine if it belongs to a flow
@@ -82,19 +84,22 @@ def find_flows(pcap):
                 src_port = tcp.sport
                 dst_port = tcp.dport
                 add_flow_packet(tcp_flows, src, dst, src_port, dst_port, time)
+                add_flow_packet(all_flows, src, dst, src_port, dst_port, time)
             elif isinstance(ip.data, dpkt.udp.UDP):
                 # UDP packet
                 udp = ip.data
                 src_port = udp.sport
                 dst_port = udp.dport
+                add_flow_packet(all_flows, src, dst, src_port, dst_port, time)
                 add_flow_packet(udp_flows, src, dst, src_port, dst_port, time)
 
-    return tcp_flows, udp_flows
+    return all_flows, tcp_flows, udp_flows
     #  for flow in tcp_flows.keys():
         #  src, dst, src_port, src_dst = flow
         #  num_pkts, start_time, end_time = tcp_flows[flow]
         #  duration = end_time - start_time
         #  print '{0}:{2}->{1}:{3} num_pkts={4} duration={5}'.format(src, dst, src_port, src_dst, num_pkts, duration)
+
 
 def flow_counts(tcp_flows, udp_flows):
     tcp_flow_count = len(tcp_flows)
@@ -114,16 +119,53 @@ def flow_counts(tcp_flows, udp_flows):
     print 'Total number of packets in TCP flows: {0} {1}%'.format(total_tcp_count, to_percentage(total_tcp_count, total_packet_count))
     print 'Total number of packets in UDP flows: {0} {1}%'.format(total_udp_count, to_percentage(total_udp_count, total_packet_count))
 
-def flow_durations(flows):
-    pass
 
-def test():
-    """Open up a test pcap file and print out the packets"""
+def flow_durations(flows):
+    durations = []
+    for flow in flows.keys():
+        _, first_timestamp, last_timestamp =  flows[flow]
+        timedelta = last_timestamp - first_timestamp
+        flow_duration = timedelta.total_seconds()
+        durations.append(flow_duration)
+    return durations
+
+def flow_packet_counts(flows):
+    counts = []
+    for flow in flows.keys():
+        count, _, _ = flows[flow]
+        counts.append(count)
+    return counts
+
+
+
+def process_flows():
     with open(sys.argv[1], 'rb') as f:
         pcap = dpkt.pcap.Reader(f)
-        tcp_flows, udp_flows = find_flows(pcap)
+        # find all flows and put them in dictionaries
+        all_flows, tcp_flows, udp_flows = find_flows(pcap)
+
+        # print info about counts of tcp/udp flows
         flow_counts(tcp_flows, udp_flows)
+
+        # find durations of flows
+        all_durations = flow_durations(all_flows)
+        tcp_durations = flow_durations(tcp_flows)
+        udp_durations = flow_durations(udp_flows)
+        # graph CDF of durations
+        grapher.graphCDF(all_durations)
+        grapher.graphCDF(tcp_durations)
+        grapher.graphCDF(udp_durations)
+
+        # find packet counts of flows
+        all_counts = flow_packet_counts(all_flows)
+        tcp_counts = flow_packet_counts(tcp_flows)
+        udp_counts = flow_packet_counts(udp_flows)
+        # graph CDF of packet counts
+        grapher.graphCDF(all_counts)
+        grapher.graphCDF(tcp_counts)
+        grapher.graphCDF(udp_counts)
+
 
 
 if __name__ == '__main__':
-    test()
+    process_flows()
