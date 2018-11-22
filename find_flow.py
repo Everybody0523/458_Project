@@ -152,18 +152,14 @@ def process_flows():
         tcp_durations = flow_durations(tcp_flows)
         udp_durations = flow_durations(udp_flows)
         # graph CDF of durations
-        grapher.graphCDF(all_durations)
-        grapher.graphCDF(tcp_durations)
-        grapher.graphCDF(udp_durations)
+        grapher.graph_CDF([all_durations, tcp_durations, udp_durations], ['All', 'TCP', 'UDP'], 'CDF of flow durations', 'duration', 'probability')
 
         # find packet counts of flows
         all_counts = flow_packet_counts(all_flows)
         tcp_counts = flow_packet_counts(tcp_flows)
         udp_counts = flow_packet_counts(udp_flows)
         # graph CDF of packet counts
-        grapher.graphCDF(all_counts)
-        grapher.graphCDF(tcp_counts)
-        grapher.graphCDF(udp_counts)
+        grapher.graph_CDF([all_counts, tcp_counts, udp_counts], ['All', 'TCP', 'UDP'], 'CDF of flow packet sizes', 'number of packets in a flow', 'probability')
 
 
 
