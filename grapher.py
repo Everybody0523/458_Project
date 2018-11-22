@@ -19,8 +19,9 @@ def graph_CDF_alt(data_sets, data_labels, title, xlabel, ylabel):
         total_sum = np.sum(data_sets[i])
 
         bucket_values = np.sort(np.array(data_sets[i], dtype=np.float32))
+        probabilities = np.full(len(data_sets[i]), 1, dtype=np.float32) / len(data_sets[i])
+        cumulative = np.cumsum(probabilities)
 
-        probabilities = bucket_values / total_sum
         ax.plot(bucket_values, np.cumsum(probabilities), label=data_labels[i])
 
     ax.grid(True)
