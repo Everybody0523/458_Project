@@ -6,8 +6,8 @@ class FlowPacketTCP:
         self.dst_port = dst_port
         self.time = time
         self.length = length
-        self.seq = None
-        self.ack = None
+        self.seq = seq
+        self.ack = ack
 
     def __lt__(self, other):
         if not(instanceof(self, FlowPacketTCP) and instanceof(other, FlowPacketTCP)):
