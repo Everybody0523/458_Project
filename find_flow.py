@@ -60,7 +60,7 @@ def add_flow_packet(flow_dict, src, dst, src_port, dst_port, time, length):
         flow_dict[key] = 1, time, time, length
 
 
-def add_flow_packet_object(flow_dict, src, dst, src_port, dst_port, time, length, seq, ack):
+def add_flow_packet_object(flow_dict, src, dst, src_port, dst_port, time, length, seq, ack, flags):
     # packets from A to B and from B to A belong to the same flow
     key = (src, dst, src_port, dst_port)
     reverse_key = (dst, src, dst_port, src_port)
@@ -77,12 +77,12 @@ def add_flow_packet_object(flow_dict, src, dst, src_port, dst_port, time, length
         time_delta = time - flow[-1].time
         # only add to existing flow if packet is less than 90 mins apart
         if time_delta  < datetime.timedelta(minutes=90):
-            flow_dict[key].append(FlowPacketTCP(src, dst, src_port, dst_port, time, length, seq, ack))
+            flow_dict[key].append(FlowPacketTCP(src, dst, src_port, dst_port, time, length, seq, ack, flags))
         else:
             print 'flow {0} too far apart'.format(flow)
     else:
         # new flow found
-        flow_dict[key] = [FlowPacketTCP(src, dst, src_port, dst_port, time, length, seq, ack)]
+        flow_dict[key] = [FlowPacketTCP(src, dst, src_port, dst_port, time, length, seq, ack, flags)]
 
 def find_flows(pcap):
     all_flows = {}
@@ -114,7 +114,7 @@ def find_flows(pcap):
                 ack = tcp.seq
                 add_flow_packet(tcp_flows, src, dst, src_port, dst_port, time, length)
                 add_flow_packet(all_flows, src, dst, src_port, dst_port, time, length)
-                add_flow_packet_object(tcp_flows_with_packets, src, dst, src_port, dst_port, time, length, seq, ack)
+                add_flow_packet_object(tcp_flows_with_packets, src, dst, src_port, dst_port, time, length, seq, ack, tcp.flags)
             elif isinstance(ip.data, dpkt.udp.UDP):
                 # UDP packet
                 udp = ip.data
