@@ -46,7 +46,8 @@ def finished_nicely(flow_list):
         if (pkt.flags & dpkt.tcp.TH_ACK) and ((pkt.src, pkt.src_port) == B) and i > A_sent_FIN:
             B_ack_A = True
         i += 1
-    return A_sent_FIN and B_sent_FIN and A_ack_B and B_ack_A
+    no_reset = not reseted(flow_list)
+    return A_sent_FIN and B_sent_FIN and A_ack_B and B_ack_A and no_reset
        
 
 def still_ongoing(flow_list): 
@@ -77,6 +78,7 @@ def find_final_state(tcp_dict):
     count_FAILED = 0
     flows = tcp_dict.values()
     for f in flows:
+        print f[-1].flags
         if (f[-1].flags & dpkt.tcp.TH_SYN) and len(f) == 1: 
             count_REQUEST += 1
         if reseted(f):
@@ -100,8 +102,10 @@ def find_final_state(tcp_dict):
 
 
 if __name__ == "__main__":
-    with open(sys.argv[1], 'rb') as meepFile:
+    pathName = sys.argv[1]
+    with open(pathName, 'rb') as meepFile:
         pcap = dpkt.pcap.Reader(meepFile)
-        _,_,_,tcp_dict = find_flow.find_flows(pcap)
+        temp_tup = find_flow.find_flows(pcap)
+        tcp_dict = temp_tup[4]
         find_final_state(tcp_dict)
     print find_flow.last_timestamp
