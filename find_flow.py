@@ -60,7 +60,7 @@ def add_flow_packet(flow_dict, src, dst, src_port, dst_port, time, length):
         flow_dict[key] = 1, time, time, length
 
 
-def add_flow_packet_object(flow_dict, src, dst, src_port, dst_port, time, length, seq, ack, flags):
+def add_flow_packet_object(flow_dict, src, dst, src_port, dst_port, time, length, seq=None, ack=None, flags=None):
     # packets from A to B and from B to A belong to the same flow
     key = (src, dst, src_port, dst_port)
     reverse_key = (dst, src, dst_port, src_port)
@@ -89,6 +89,8 @@ def find_flows(pcap):
     tcp_flows = {}
     udp_flows = {}
     tcp_flows_with_packets = {}
+    udp_flows_with_packets = {}
+    all_flows_with_packets = {}
     # For each packet in the pcap determine if it belongs to a flow
     for timestamp, buf in pcap:
 
@@ -115,6 +117,7 @@ def find_flows(pcap):
                 add_flow_packet(tcp_flows, src, dst, src_port, dst_port, time, length)
                 add_flow_packet(all_flows, src, dst, src_port, dst_port, time, length)
                 add_flow_packet_object(tcp_flows_with_packets, src, dst, src_port, dst_port, time, length, seq, ack, tcp.flags)
+                add_flow_packet_object(all_flows_with_packets, src, dst, src_port, dst_port, time, length)
             elif isinstance(ip.data, dpkt.udp.UDP):
                 # UDP packet
                 udp = ip.data
@@ -122,8 +125,10 @@ def find_flows(pcap):
                 dst_port = udp.dport
                 add_flow_packet(all_flows, src, dst, src_port, dst_port, time, length)
                 add_flow_packet(udp_flows, src, dst, src_port, dst_port, time, length)
+                add_flow_packet_object(udp_flows_with_packets, src, dst, src_port, dst_port, time, length)
+                add_flow_packet_object(all_flows_with_packets, src, dst, src_port, dst_port, time, length)
 
-    return all_flows, tcp_flows, udp_flows, tcp_flows_with_packets
+    return all_flows, tcp_flows, udp_flows, all_flows_with_packets, tcp_flows_with_packets, udp_flows_with_packets
     #  for flow in tcp_flows.keys():
         #  src, dst, src_port, src_dst = flow
         #  num_pkts, start_time, end_time = tcp_flows[flow]
@@ -148,6 +153,8 @@ def flow_counts(tcp_flows, udp_flows):
     total_packet_count = total_tcp_count + total_udp_count
     print 'Total number of packets in TCP flows: {0} {1}%'.format(total_tcp_count, to_percentage(total_tcp_count, total_packet_count))
     print 'Total number of packets in UDP flows: {0} {1}%'.format(total_udp_count, to_percentage(total_udp_count, total_packet_count))
+    print 'Average number of packets in TCP flow: {0}'.format(float(total_tcp_count) / tcp_flow_count)
+    print 'Average number of packets in UDP flow: {0}'.format(float(total_udp_count) / udp_flow_count)
 
 
 def flow_durations(flows):
@@ -174,12 +181,23 @@ def flow_byte_sizes(flows):
         byte_sizes.append(flow_size)
     return byte_sizes
 
+def flow_interpacket_arrival_times(flows_with_packets):
+    interpacket_times = []
+    for flow in flows_with_packets.keys():
+        flow_packets = flows_with_packets[flow]
+        for i in range(1, len(flow_packets)):
+            interpacket_time = (flow_packets[i].time - flow_packets[i - 1].time).total_seconds()
+            interpacket_times.append(interpacket_time)
+
+    return interpacket_times
+
+
 
 def process_flows():
     with open(sys.argv[1], 'rb') as f:
         pcap = dpkt.pcap.Reader(f)
         # find all flows and put them in dictionaries
-        all_flows, tcp_flows, udp_flows, tcp_flows_with_packets = find_flows(pcap)
+        all_flows, tcp_flows, udp_flows, all_flows_with_packets, tcp_flows_with_packets, udp_flows_with_packets = find_flows(pcap)
 
         # print info about counts of tcp/udp flows
         flow_counts(tcp_flows, udp_flows)
@@ -196,12 +214,19 @@ def process_flows():
         all_counts = flow_packet_counts(all_flows)
         tcp_counts = flow_packet_counts(tcp_flows)
         udp_counts = flow_packet_counts(udp_flows)
+
         # graph CDF of packet counts
         #  grapher.graph_CDF_alt([all_counts, tcp_counts, udp_counts], ['All', 'TCP', 'UDP'], 'CDF of flow packet sizes', 'number of packets in a flow', 'probability')
         all_sizes = flow_byte_sizes(all_flows)
         tcp_sizes = flow_byte_sizes(tcp_flows)
         udp_sizes = flow_byte_sizes(udp_flows)
-        grapher.graph_CDF_alt([all_sizes, tcp_sizes, udp_sizes], ['All', 'TCP', 'UDP'], 'CDF of flow sizes in bytes', 'number of bytes in a flow', 'probability')
+        #  grapher.graph_CDF_alt([all_sizes, tcp_sizes, udp_sizes], ['All', 'TCP', 'UDP'], 'CDF of flow sizes in bytes', 'number of bytes in a flow', 'probability')
+
+        # find interpacket arrival times
+        tcp_interpacket_times = flow_interpacket_arrival_times(tcp_flows_with_packets)
+        udp_interpacket_times = flow_interpacket_arrival_times(udp_flows_with_packets)
+        all_interpacket_times = flow_interpacket_arrival_times(all_flows_with_packets)
+        #  grapher.graph_CDF_alt([all_interpacket_times, tcp_interpacket_times, udp_interpacket_times], ['All', 'TCP', 'UDP'], 'CDF of interpacket arrival times', 'seconds', 'probability')
 
 
 
