@@ -6,6 +6,7 @@ from dpkt.compat import compat_ord
 import grapher
 from flow import FlowPacketTCP
 
+last_timestamp = None
 
 def mac_addr(address):
     """Convert a MAC address to a readable/printable string
@@ -85,6 +86,7 @@ def add_flow_packet_object(flow_dict, src, dst, src_port, dst_port, time, length
         flow_dict[key] = [FlowPacketTCP(src, dst, src_port, dst_port, time, length, seq, ack, flags)]
 
 def find_flows(pcap):
+    global last_timestamp
     all_flows = {}
     tcp_flows = {}
     udp_flows = {}
@@ -93,6 +95,7 @@ def find_flows(pcap):
     for timestamp, buf in pcap:
 
         time = datetime.datetime.utcfromtimestamp(timestamp)
+        last_timestamp = time
         
         # Unpack the Ethernet frame (mac src/dst, ethertype)
         eth = dpkt.ethernet.Ethernet(buf)
