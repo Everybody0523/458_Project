@@ -13,7 +13,7 @@ def graph_CDF(data_sets, data_labels, title, xlabel, ylabel):
     ax.set_ylabel(ylabel)
     plt.show()
 
-def graph_CDF_alt(data_sets, data_labels, title, xlabel, ylabel):
+def graph_CDF_alt(data_sets, data_labels, title, xlabel, ylabel, lineLen=None):
     fig, ax = plt.subplots(figsize=(8, 4))
     for i in range(len(data_sets)):
         total_sum = np.sum(data_sets[i])
@@ -22,7 +22,7 @@ def graph_CDF_alt(data_sets, data_labels, title, xlabel, ylabel):
         probabilities = np.full(len(data_sets[i]), 1, dtype=np.float32) / len(data_sets[i])
         cumulative = np.cumsum(probabilities)
 
-        ax.plot(bucket_values, np.cumsum(probabilities), label=data_labels[i])
+        ax.plot(bucket_values, np.cumsum(probabilities), label=data_labels[i], linewidth=lineLen)
 
     ax.grid(True)
     ax.legend(loc='right')

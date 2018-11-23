@@ -2,13 +2,7 @@ import scapy.all as scapy
 import numpy as np
 import sys
 import matplotlib.pyplot as plt
-
-def graph_CDF(pktLens):
-    values, base = np.histogram(pktLens, bins=40)
-    cumulative = np.cumsum(values)
-    plt.plot(base[:-1], cumulative, c='blue')
-    plt.show()     
-
+import grapher as graphMeDaddy
 
 def graph_lengths(infile, pktType):
     pkts = scapy.rdpcap(infile)
@@ -22,7 +16,7 @@ def graph_lengths(infile, pktType):
             if packet.haslayer(scapy.UDP):
                 lens.append(len(packet))
         elif pktType == "IP":
-            if packet.haslayer(scapy.IP):
+            if packet.haslayer(scapy.IP) and (not packet.haslayer(scapy.ICMP)):
                 lens.append(len(packet))
         elif pktType == "NOT_IP":
             if not packet.haslayer(scapy.IP):
@@ -34,21 +28,21 @@ def graph_lengths(infile, pktType):
     
 
 def graph_all(infile):
-    pkts = scapy.rdpcap(infile)
-    number_packets = len(pkts)
     TCP_lens = []
     UDP_lens = []
     IP_lens = []
     NOT_IP_lens = []
-    for packet in pkts:
+    for doomPacket in scapy.RawPcapReader(infile):
+        packet = scapy.Ether(doomPacket[0])
+        wirelen = doomPacket[1][2] 
         if packet.haslayer(scapy.TCP):
-            TCP_lens.append(len(packet))
+            TCP_lens.append(wirelen)
         if packet.haslayer(scapy.UDP):
-            UDP_lens.append(len(packet))
+            UDP_lens.append(wirelen)
         if packet.haslayer(scapy.IP):
-            IP_lens.append(len(packet))
+            IP_lens.append(wirelen)
         if not packet.haslayer(scapy.IP):
-            NOT_IP_lens.append(len(packet))
+            NOT_IP_lens.append(wirelen)
     return TCP_lens, UDP_lens, IP_lens, NOT_IP_lens
    
 
@@ -57,17 +51,7 @@ if __name__ == '__main__':
         print "Wrong number of args"
         sys.exit()
     all_lens = graph_all(sys.argv[1])
-    fig, ax = plt.subplots(figsize=(8, 4))
-    n, bins, patches = ax.hist(all_lens[0], 100, cumulative=True, density=True, histtype="step", label="TCP")
-    n, bins, patches = ax.hist(all_lens[1], 100, cumulative=True, density=True, histtype="step", label="UDP")
-    n, bins, patches = ax.hist(all_lens[2], 100, cumulative=True, density=True, histtype="step", label="IP")
-    n, bins, patches = ax.hist(all_lens[3], 100, cumulative=True, density=True, histtype="step", label="Not_IP")
-    ax.grid(True)
-    ax.legend(loc='right')
-    ax.set_title('Cumulative step histograms')
-    ax.set_xlabel('Annual rainfall (mm)')
-    ax.set_ylabel('Likelihood of occurrence')
-
+    graphMeDaddy.graph_CDF_alt(all_lens, ["TCP", "UDP", "IP", "NOT_IP"], "Packet Sizes", "Packet Size", "Probability", lineLen=1.5) 
     plt.show()
 
 
