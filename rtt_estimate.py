@@ -67,6 +67,27 @@ def map_packets_to_ack(tcp_flow_objects):
 
     print 'Number of acknowledged packets', len(ack_map)
     return ack_map
+
+
+def map_packets_to_ack2(tcp_flow_objects):
+    print 'Mapping acks of flow length=', len(tcp_flow_objects)
+    # set of expected acks
+    packets_sent_map = {}
+    # map of expected acks to a list of actual packet acks
+    ack_map = {}
+    # map each packet to its ack, so that we can estimate RTT
+    for i in range(len(tcp_flow_objects)):
+        cur_packet = tcp_flow_objects[i]
+        if cur_packet.length != 0:
+            # contains data (not just ack or other flag)
+            # expecting ack for this packet
+            ack_map[cur_packet.seq] = None
+        # now, match the ack in the current packet to one of the previous packets
+        cur_ack = cur_packet.ack
+        previous_seq = cur_ack - cur_packet.seq
+        if previous_seq in ack_map:
+            ack_map[previous_seq] = cur_ack
+    print ack_map
         
 
 if __name__ == '__main__':
