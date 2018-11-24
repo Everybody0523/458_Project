@@ -73,6 +73,7 @@ def add_flow_packet_object(flow_dict, src, dst, src_port, dst_port, time, length
     elif reverse_key in flow_dict:
         flow = flow_dict[reverse_key]
         key = reverse_key
+
     if flow:
         # update existing flow info
         time_delta = time - flow[-1].time
@@ -95,7 +96,6 @@ def find_flows(pcap):
     all_flows_with_packets = {}
     # For each packet in the pcap determine if it belongs to a flow
     for timestamp, buf in pcap:
-
         time = datetime.datetime.utcfromtimestamp(timestamp)
         last_timestamp = time
         
