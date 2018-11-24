@@ -18,6 +18,7 @@ def three_largest_flows(flows_dict, f_value):
 def three_largest_flows_packet_number(tcp_flows):
     return three_largest_flows(tcp_flows, lambda flow : len(flow))
 
+
 def flow_size(flow):
     """
     Return the total size of all packets in the flow in bytes
@@ -27,11 +28,14 @@ def flow_size(flow):
         byte_size += packet.length
     return byte_size
 
+
 def three_largest_flows_byte_size(tcp_flows): 
     return three_largest_flows(tcp_flows, lambda flow : flow_size(flow))
 
+
 def three_largest_flows_duration(tcp_flows): 
     return three_largest_flows(tcp_flows, lambda flow : flow[-1].time - flow[0].time)
+
 
 def map_packets_to_ack(tcp_flow_objects):
     print 'Mapping acks of flow length=', len(tcp_flow_objects)
@@ -95,10 +99,14 @@ if __name__ == '__main__':
         pcap = dpkt.pcap.Reader(f)
         # find all flows and put them in dictionaries
         all_flows, tcp_flows, udp_flows, all_flows_with_packets, tcp_flows_with_packets, udp_flows_with_packets = find_flow.find_flows(pcap)
+        # flow1, flow2, flow2 is a tuple
+        # first element is number of packets/bytes/duration
+        # second element is the flow itself (as a list of FlowPacketTCP objects)
         flow1, flow2, flow3 = three_largest_flows_packet_number(tcp_flows_with_packets)
         map_packets_to_ack(flow1[1])
         print 'Three largest flows by packet number:', flow1[0], flow2[0], flow3[0]
         flow1, flow2, flow3 = three_largest_flows_byte_size(tcp_flows_with_packets)
         print 'Three largest flows by byte size:', flow1[0], flow2[0], flow3[0]
         flow1, flow2, flow3 = three_largest_flows_duration(tcp_flows_with_packets)
-        print 'Three largest flows by flow duration:', flow1[0], flow2[0], flow3[0]
+         
+        print 'Three largest flows by flow duration: {0}, {1}, {2}'.format(flow1[0], flow2[0], flow3[0])
