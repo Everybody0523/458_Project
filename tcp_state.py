@@ -27,18 +27,11 @@ def finished_nicely(flow_list):
         if (pkt.flags & dpkt.tcp.TH_FIN) and ((pkt.src, pkt.src_port) == A): 
             A_sent_FIN = True
             A_FIN_index = i
-            print "A sent FIN at {0}".format(A_FIN_index)
         if (pkt.flags & dpkt.tcp.TH_FIN) and ((pkt.src, pkt.src_port) == B):
             B_sent_FIN = True
             B_FIN_index = i
-            print "B sent FIN at {0}".format(B_FIN_index)
         i += 1
 
-    if A_sent_FIN and B_sent_FIN:
-        print A
-        print B
-        print "-----"
- 
     i = 0
     for pkt in flow_list:
         if (pkt.flags & dpkt.tcp.TH_ACK) and ((pkt.src, pkt.src_port) == A) and i > B_sent_FIN:
@@ -78,21 +71,45 @@ def find_final_state(tcp_dict):
     count_FAILED = 0
     flows = tcp_dict.values()
     for f in flows:
-        print f[-1].flags
+        has_been_categorized = 0
+        meeps = [False, False, False, False, False]
         if (f[-1].flags & dpkt.tcp.TH_SYN) and len(f) == 1: 
             count_REQUEST += 1
+            has_been_categorized += 1
+            meeps[0] = True
         if reseted(f):
             count_RESET += 1
+            has_been_categorized += 1
+            meeps[1] = True
         if len(f) > 1: 
             if finished_nicely(f):
-                for pkt in f:
-                    print format(pkt.flags, '#010b')
-                print '------------------------'
                 count_FINISHED += 1
+                has_been_categorized += 1
+                meeps[2] = True
         if still_ongoing(f):
             count_ONGOING += 1
+            has_been_categorized += 1
+            meeps[3] = True
         if has_failed(f):
             count_FAILED += 1
+            has_been_categorized += 1
+            meeps[4] = True
+        
+        if has_been_categorized > 1:
+            for pkt in f:
+                print "Src: {0}  Dst: {1}  Flag: ".format(pkt.src, pkt.dst) + format(pkt.flags, '#010b')
+                print "In {0} categories".format(has_been_categorized)
+            if meeps[0]:
+                print "REQUEST"
+            if meeps[1]:
+                print "RESET"
+            if meeps[2]:
+                print "FINISHED"
+            if meeps[3]:
+                print "ONGOING"
+            if meeps[4]:
+                print "FAILED"
+            print "--------------------------"
     print "Request only: " + str(count_REQUEST)
     print "Connection Reset: {0}".format(count_RESET)
     print "Connection Finished Successfully: {0}".format(count_FINISHED)
