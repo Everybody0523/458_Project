@@ -116,7 +116,7 @@ def find_flows(pcap):
                 src_port = tcp.sport
                 dst_port = tcp.dport
                 seq = tcp.seq
-                ack = tcp.seq
+                ack = tcp.ack
                 add_flow_packet(tcp_flows, src, dst, src_port, dst_port, time, length)
                 add_flow_packet(all_flows, src, dst, src_port, dst_port, time, length)
                 add_flow_packet_object(tcp_flows_with_packets, src, dst, src_port, dst_port, time, length, seq, ack, tcp.flags)
