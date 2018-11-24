@@ -29,8 +29,8 @@ def three_largest_flows_duration(tcp_flows):
 def map_packets_to_ack(tcp_flow_objects):
     ack_map = {}
     # map each packet to its ack, so that we can estimate RTT
-    for i in range(len(tcp_flow)):
-        cur_packet = tcp_flow[i]
+    for i in range(len(tcp_flow_objects)):
+        cur_packet = tcp_flow_objects[i]
         if cur_packet.length != 0:
             # contains data (not just ack or other flag)
             # expecting ack for this packet
@@ -54,5 +54,5 @@ if __name__ == '__main__':
         print 'Three largest flows by byte size:', flow1[0], flow2[0], flow3[0]
         flow1, flow2, flow3 = three_largest_flows_duration(tcp_flows)
         print 'Three largest flows by flow duration:', flow1[0], flow2[0], flow3[0]
-        flow1 = 
-        map_packets_to_ack(flow1)
+        #flow1 = 
+        #map_packets_to_ack(flow1)
