@@ -4,7 +4,7 @@ import datetime
 import socket
 from dpkt.compat import compat_ord
 import grapher
-from flow import FlowPacketTCP
+from flow import FlowPacketTCP, Flow, FlowPacket
 
 last_timestamp = None
 
@@ -34,34 +34,7 @@ def inet_to_str(inet):
 def to_percentage(numerator, denominator):
     return (float(numerator) / denominator) * 100
 
-def add_flow_packet(flow_dict, src, dst, src_port, dst_port, time, length):
-    # packets from A to B and from B to A belong to the same flow
-    key = (src, dst, src_port, dst_port)
-    reverse_key = (dst, src, dst_port, src_port)
-    flow = None
-    # flow in one direction
-    if key in flow_dict:
-        flow = flow_dict[key]
-    # flow in another direction
-    elif reverse_key in flow_dict:
-        flow = flow_dict[reverse_key]
-        key = reverse_key
-    if flow:
-        # update existing flow info
-        count, first_timestamp, last_timestamp, total_size = flow
-        time_delta = time - last_timestamp
-        # only add to existing flow if packet is less than 90 mins apart
-        if time_delta  < datetime.timedelta(minutes=90):
-            flow_dict[key] = count + 1, first_timestamp, time, total_size + length
-        else:
-            print 'flow {0} too far apart'.format(flow)
-
-    else:
-        # new flow found
-        flow_dict[key] = 1, time, time, length
-
-
-def add_flow_packet_object(flow_dict, src, dst, src_port, dst_port, time, length, seq=None, ack=None, flags=None):
+def add_flow_packet(flow_dict, src, dst, src_port, dst_port, new_packet):
     # packets from A to B and from B to A belong to the same flow
     key = (src, dst, src_port, dst_port)
     reverse_key = (dst, src, dst_port, src_port)
@@ -76,24 +49,22 @@ def add_flow_packet_object(flow_dict, src, dst, src_port, dst_port, time, length
 
     if flow:
         # update existing flow info
-        time_delta = time - flow[-1].time
+        time_delta = new_packet.time - flow.packets[-1].time
         # only add to existing flow if packet is less than 90 mins apart
         if time_delta  < datetime.timedelta(minutes=90):
-            flow_dict[key].append(FlowPacketTCP(src, dst, src_port, dst_port, time, length, seq, ack, flags))
+            flow.add_packet(new_packet)
         else:
             print 'flow {0} too far apart'.format(flow)
     else:
         # new flow found
-        flow_dict[key] = [FlowPacketTCP(src, dst, src_port, dst_port, time, length, seq, ack, flags)]
+        flow_dict[key] = Flow(src, dst, src_port, dst_port)
+        flow_dict[key].add_packet(new_packet)
 
 def find_flows(pcap):
     global last_timestamp
     all_flows = {}
     tcp_flows = {}
     udp_flows = {}
-    tcp_flows_with_packets = {}
-    udp_flows_with_packets = {}
-    all_flows_with_packets = {}
     # For each packet in the pcap determine if it belongs to a flow
     for timestamp, buf in pcap:
         time = datetime.datetime.utcfromtimestamp(timestamp)
@@ -109,7 +80,10 @@ def find_flows(pcap):
             ip = eth.data
             src = inet_to_str(ip.src)
             dst  = inet_to_str(ip.dst)
-            length = ip.len
+            # length is the length of the entire IP packet, including the header
+            total_length = ip.len
+            # just the header length in bytes (ip.hl is the number of 32-bit words)
+            ip_hdr_length = ip.hl * 4
             if isinstance(ip.data, dpkt.tcp.TCP):
                 # TCP packet
                 tcp = ip.data
@@ -117,21 +91,23 @@ def find_flows(pcap):
                 dst_port = tcp.dport
                 seq = tcp.seq
                 ack = tcp.ack
-                add_flow_packet(tcp_flows, src, dst, src_port, dst_port, time, length)
-                add_flow_packet(all_flows, src, dst, src_port, dst_port, time, length)
-                add_flow_packet_object(tcp_flows_with_packets, src, dst, src_port, dst_port, time, length, seq, ack, tcp.flags)
-                add_flow_packet_object(all_flows_with_packets, src, dst, src_port, dst_port, time, length)
+                tcp_hdr_length = tcp.off * 4
+                new_packet = FlowPacketTCP(time, total_length, 0, ip_hdr_length, tcp_hdr_length, seq, ack, tcp.flags)
+                add_flow_packet(tcp_flows, src, dst, src_port, dst_port, new_packet)
+                general_new_packet = FlowPacket(time, total_length, 0, ip_hdr_length, tcp_hdr_length)
+                add_flow_packet(all_flows, src, dst, src_port, dst_port, general_new_packet)
             elif isinstance(ip.data, dpkt.udp.UDP):
                 # UDP packet
                 udp = ip.data
                 src_port = udp.sport
                 dst_port = udp.dport
-                add_flow_packet(all_flows, src, dst, src_port, dst_port, time, length)
-                add_flow_packet(udp_flows, src, dst, src_port, dst_port, time, length)
-                add_flow_packet_object(udp_flows_with_packets, src, dst, src_port, dst_port, time, length)
-                add_flow_packet_object(all_flows_with_packets, src, dst, src_port, dst_port, time, length)
+                # udp header is always 8 bytes
+                udp_hdr_length = 8
+                new_packet = FlowPacket(time, total_length, 0, ip_hdr_length, udp_hdr_length)
+                add_flow_packet(all_flows, src, dst, src_port, dst_port, new_packet)
+                add_flow_packet(udp_flows, src, dst, src_port, dst_port, new_packet)
 
-    return all_flows, tcp_flows, udp_flows, all_flows_with_packets, tcp_flows_with_packets, udp_flows_with_packets
+    return all_flows, tcp_flows, udp_flows
     #  for flow in tcp_flows.keys():
         #  src, dst, src_port, src_dst = flow
         #  num_pkts, start_time, end_time = tcp_flows[flow]
@@ -147,11 +123,11 @@ def flow_counts(tcp_flows, udp_flows):
     print '{0} UDP flows {1}'.format(udp_flow_count, to_percentage(udp_flow_count, total_flow_count))
     total_tcp_count = 0
     for flow in tcp_flows.keys():
-        count = tcp_flows[flow][0]
+        count = tcp_flows[flow].num_packets
         total_tcp_count += count
     total_udp_count = 0
     for flow in udp_flows.keys():
-        count = udp_flows[flow][0]
+        count = udp_flows[flow].num_packets
         total_udp_count += count
     total_packet_count = total_tcp_count + total_udp_count
     print 'Total number of packets in TCP flows: {0} {1}%'.format(total_tcp_count, to_percentage(total_tcp_count, total_packet_count))
@@ -163,16 +139,14 @@ def flow_counts(tcp_flows, udp_flows):
 def flow_durations(flows):
     durations = []
     for flow in flows.keys():
-        _, first_timestamp, last_timestamp, _ =  flows[flow]
-        timedelta = last_timestamp - first_timestamp
-        flow_duration = timedelta.total_seconds()
+        flow_duration = flows[flow].flow_duration()
         durations.append(flow_duration)
     return durations
 
 def flow_packet_counts(flows):
     counts = []
     for flow in flows.keys():
-        count, _, _, _ = flows[flow]
+        count = flows[flow].num_packets
         counts.append(count)
     return counts
 
@@ -180,14 +154,14 @@ def flow_byte_sizes(flows):
     # note currently printing the sizes of data in IP packets
     byte_sizes = []
     for flow in flows.keys():
-        _, _, _, flow_size = flows[flow]
+        flow_size = flows[flow].num_bytes
         byte_sizes.append(flow_size)
     return byte_sizes
 
-def flow_interpacket_arrival_times(flows_with_packets):
+def flow_interpacket_arrival_times(flows):
     interpacket_times = []
-    for flow in flows_with_packets.keys():
-        flow_packets = flows_with_packets[flow]
+    for flow in flows.keys():
+        flow_packets = flows[flow].packets
         for i in range(1, len(flow_packets)):
             interpacket_time = (flow_packets[i].time - flow_packets[i - 1].time).total_seconds()
             interpacket_times.append(interpacket_time)
@@ -200,7 +174,7 @@ def process_flows():
     with open(sys.argv[1], 'rb') as f:
         pcap = dpkt.pcap.Reader(f)
         # find all flows and put them in dictionaries
-        all_flows, tcp_flows, udp_flows, all_flows_with_packets, tcp_flows_with_packets, udp_flows_with_packets = find_flows(pcap)
+        all_flows, tcp_flows, udp_flows = find_flows(pcap)
 
         # print info about counts of tcp/udp flows
         flow_counts(tcp_flows, udp_flows)

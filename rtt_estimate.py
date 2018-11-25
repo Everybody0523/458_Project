@@ -16,38 +16,28 @@ def three_largest_flows(flows_dict, f_value):
     return sorted_flows[0], sorted_flows[1], sorted_flows[2]
 
 def three_largest_flows_packet_number(tcp_flows):
-    return three_largest_flows(tcp_flows, lambda flow : len(flow))
-
-
-def flow_size(flow):
-    """
-    Return the total size of all packets in the flow in bytes
-    """
-    byte_size = 0
-    for packet in flow:
-        byte_size += packet.length
-    return byte_size
+    return three_largest_flows(tcp_flows, lambda flow : flow.num_packets)
 
 
 def three_largest_flows_byte_size(tcp_flows): 
-    return three_largest_flows(tcp_flows, lambda flow : flow_size(flow))
+    return three_largest_flows(tcp_flows, lambda flow : flow.num_bytes)
 
 
 def three_largest_flows_duration(tcp_flows): 
-    return three_largest_flows(tcp_flows, lambda flow : flow[-1].time - flow[0].time)
+    return three_largest_flows(tcp_flows, lambda flow : flow.flow_duration())
 
 
-def map_packets_to_ack(tcp_flow_objects):
-    print 'Mapping acks of flow length=', len(tcp_flow_objects)
+def map_packets_to_ack(tcp_flow):
+    print 'Mapping acks of flow length=', tcp_flow.num_packets
     # set of expected acks
     packets_sent_map = {}
     # map of expected acks to a list of actual packet acks
     ack_map = {}
-    for i in range(len(tcp_flow_objects)):
-        cur_packet = tcp_flow_objects[i]
-        #  print cur_packet.seq, cur_packet.ack, cur_packet.length
+    for i in range(tcp_flow.num_packets):
+        cur_packet = tcp_flow.packets[i]
+        print 'seq={0}, ack={1}, len={2}'.format(cur_packet.seq, cur_packet.ack, cur_packet.data_length)
 
-        if cur_packet.length > 0:
+        if cur_packet.data_length > 0:
             # packet contains data, thus requires a matching ACK
             # WTF? 
             expected_ack = cur_packet.seq # + cur_packet.length
@@ -73,15 +63,15 @@ def map_packets_to_ack(tcp_flow_objects):
     return ack_map
 
 
-def map_packets_to_ack2(tcp_flow_objects):
-    print 'Mapping acks of flow length=', len(tcp_flow_objects)
+def map_packets_to_ack2(tcp_flow):
+    print 'Mapping acks of flow length=', tcp_flow.num_packets
     # set of expected acks
     packets_sent_map = {}
     # map of expected acks to a list of actual packet acks
     ack_map = {}
     # map each packet to its ack, so that we can estimate RTT
-    for i in range(len(tcp_flow_objects)):
-        cur_packet = tcp_flow_objects[i]
+    for i in range(len(tcp_flow)):
+        cur_packet = tcp_flow.packets[i]
         if cur_packet.length != 0:
             # contains data (not just ack or other flag)
             # expecting ack for this packet
@@ -98,16 +88,16 @@ if __name__ == '__main__':
     with open(sys.argv[1], 'rb') as f:
         pcap = dpkt.pcap.Reader(f)
         # find all flows and put them in dictionaries
-        all_flows, tcp_flows, udp_flows, all_flows_with_packets, tcp_flows_with_packets, udp_flows_with_packets = find_flow.find_flows(pcap)
+        all_flows, tcp_flows, udp_flows = find_flow.find_flows(pcap)
         # flow1, flow2, flow2 is a tuple
         # first element is number of packets/bytes/duration
         # second element is the flow itself (as a list of FlowPacketTCP objects)
-        flow1, flow2, flow3 = three_largest_flows_packet_number(tcp_flows_with_packets)
+        flow1, flow2, flow3 = three_largest_flows_packet_number(tcp_flows)
         map_packets_to_ack(flow1[1])
         print 'Three largest flows by packet number:', flow1[0], flow2[0], flow3[0]
-        flow1, flow2, flow3 = three_largest_flows_byte_size(tcp_flows_with_packets)
+        flow1, flow2, flow3 = three_largest_flows_byte_size(tcp_flows)
         print 'Three largest flows by byte size:', flow1[0], flow2[0], flow3[0]
-        flow1, flow2, flow3 = three_largest_flows_duration(tcp_flows_with_packets)
+        flow1, flow2, flow3 = three_largest_flows_duration(tcp_flows)
          
         print 'Three largest flows by flow duration: {0}, {1}, {2}'.format(flow1[0], flow2[0], flow3[0])
 
