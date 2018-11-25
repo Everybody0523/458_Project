@@ -72,6 +72,7 @@ def find_flows(pcap):
         
         # Unpack the Ethernet frame (mac src/dst, ethertype)
         eth = dpkt.ethernet.Ethernet(buf)
+        eth_hdr_length = 18
 
         # Make sure the Ethernet data contains an IP packet
         if isinstance(eth.data, dpkt.ip.IP):
@@ -81,7 +82,7 @@ def find_flows(pcap):
             src = inet_to_str(ip.src)
             dst  = inet_to_str(ip.dst)
             # length is the length of the entire IP packet, including the header
-            total_length = ip.len
+            total_length = ip.len + eth_hdr_length
             # just the header length in bytes (ip.hl is the number of 32-bit words)
             ip_hdr_length = ip.hl * 4
             if isinstance(ip.data, dpkt.tcp.TCP):
@@ -92,9 +93,9 @@ def find_flows(pcap):
                 seq = tcp.seq
                 ack = tcp.ack
                 tcp_hdr_length = tcp.off * 4
-                new_packet = FlowPacketTCP(time, total_length, 0, ip_hdr_length, tcp_hdr_length, seq, ack, tcp.flags)
+                new_packet = FlowPacketTCP(time, total_length, eth_hdr_length, ip_hdr_length, tcp_hdr_length, seq, ack, tcp.flags)
                 add_flow_packet(tcp_flows, src, dst, src_port, dst_port, new_packet)
-                general_new_packet = FlowPacket(time, total_length, 0, ip_hdr_length, tcp_hdr_length)
+                general_new_packet = FlowPacket(time, total_length, eth_hdr_length, ip_hdr_length, tcp_hdr_length)
                 add_flow_packet(all_flows, src, dst, src_port, dst_port, general_new_packet)
             elif isinstance(ip.data, dpkt.udp.UDP):
                 # UDP packet
@@ -103,7 +104,7 @@ def find_flows(pcap):
                 dst_port = udp.dport
                 # udp header is always 8 bytes
                 udp_hdr_length = 8
-                new_packet = FlowPacket(time, total_length, 0, ip_hdr_length, udp_hdr_length)
+                new_packet = FlowPacket(time, total_length, eth_hdr_length, ip_hdr_length, udp_hdr_length)
                 add_flow_packet(all_flows, src, dst, src_port, dst_port, new_packet)
                 add_flow_packet(udp_flows, src, dst, src_port, dst_port, new_packet)
 

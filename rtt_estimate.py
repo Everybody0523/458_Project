@@ -28,7 +28,7 @@ def three_largest_flows_duration(tcp_flows):
 
 
 def map_packets_to_ack(tcp_flow):
-    print 'Mapping acks of flow length=', tcp_flow.num_packets
+    print 'Mapping acks in the flow of length=', tcp_flow.num_packets
     # set of expected acks
     packets_sent_map = {}
     # map of expected acks to a list of actual packet acks
@@ -39,8 +39,7 @@ def map_packets_to_ack(tcp_flow):
 
         if cur_packet.data_length > 0:
             # packet contains data, thus requires a matching ACK
-            # WTF? 
-            expected_ack = cur_packet.seq # + cur_packet.length
+            expected_ack = cur_packet.seq + cur_packet.data_length
             packets_sent_map[expected_ack] = None
         if cur_packet.flags & dpkt.tcp.TH_ACK:
             # packet contains ACK, match it with an existing packet
