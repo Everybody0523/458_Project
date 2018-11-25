@@ -11,7 +11,7 @@ class FlowPacketTCP:
         self.flags = flags
 
     def __lt__(self, other):
-        if not(instanceof(self, FlowPacketTCP) and instanceof(other, FlowPacketTCP)):
+        if not(isinstance(self, FlowPacketTCP) and isinstance(other, FlowPacketTCP)):
             return False
         return self.seq < other.seq 
         
