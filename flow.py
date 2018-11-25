@@ -11,10 +11,14 @@ class Flow:
         self.last_timestamp = None
         self.type = type
         self.packets = []
+        self.total_hdr_size = 0
+        self.num_bytes_with_hdrs = 0
     
     def add_packet(self, packet):
         self.packets.append(packet)
         self.num_bytes += packet.data_length
+        self.total_hdr_size += packet.link_hdr_length + packet.ip_hdr_length + packet.transport_hdr_length
+        self.num_bytes_with_hdrs += packet.total_length
         if not self.first_timestamp:
             self.first_timestamp = packet.time
         if self.last_timestamp and packet.time < self.last_timestamp:

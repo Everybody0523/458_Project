@@ -24,6 +24,7 @@ def graph_CDF_alt(data_sets, data_labels, title, xlabel, ylabel, lineLen=None):
 
         ax.plot(bucket_values, np.cumsum(probabilities), label=data_labels[i], linewidth=lineLen)
 
+    plt.xscale('log')
     ax.grid(True)
     ax.legend(loc='right')
     ax.set_title(title)

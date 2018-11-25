@@ -152,10 +152,10 @@ def flow_packet_counts(flows):
     return counts
 
 def flow_byte_sizes(flows):
-    # note currently printing the sizes of data in IP packets
     byte_sizes = []
     for flow in flows.keys():
-        flow_size = flows[flow].num_bytes
+        # flow_size is the total size of all flow packets, including all headers
+        flow_size = flows[flow].num_bytes + flows[flow].total_hdr_size
         byte_sizes.append(flow_size)
     return byte_sizes
 
@@ -168,6 +168,19 @@ def flow_interpacket_arrival_times(flows):
             interpacket_times.append(interpacket_time)
 
     return interpacket_times
+
+def flow_overhead_ratios(flows):
+    # calculate overhead ratio of all flows
+    overhead_ratios = []
+    for flow_key in flows.keys():
+        flow = flows[flow_key]
+        hdrs_size = flow.total_hdr_size
+        data_size = flow.num_bytes + flow.total_hdr_size
+        if flow.num_bytes == 0:
+            # if no data transferred, mark as infinity
+            data_size = 9999
+        overhead_ratios.append(float(hdrs_size) / data_size)
+    return overhead_ratios
 
 
 
@@ -186,7 +199,7 @@ def process_flows():
         udp_durations = flow_durations(udp_flows)
 
         # graph CDF of durations
-        #  grapher.graph_CDF_alt([all_durations, tcp_durations, udp_durations], ['All', 'TCP', 'UDP'], 'CDF of flow durations', 'duration (seconds)', 'probability')
+        grapher.graph_CDF_alt([all_durations, tcp_durations, udp_durations], ['All', 'TCP', 'UDP'], 'CDF of flow durations', 'duration (seconds)', 'probability')
 
         # find packet counts of flows
         all_counts = flow_packet_counts(all_flows)
@@ -194,17 +207,20 @@ def process_flows():
         udp_counts = flow_packet_counts(udp_flows)
 
         # graph CDF of packet counts
-        #  grapher.graph_CDF_alt([all_counts, tcp_counts, udp_counts], ['All', 'TCP', 'UDP'], 'CDF of flow packet sizes', 'number of packets in a flow', 'probability')
+        grapher.graph_CDF_alt([all_counts, tcp_counts, udp_counts], ['All', 'TCP', 'UDP'], 'CDF of flow sizes in packets', 'number of packets in a flow', 'probability')
         all_sizes = flow_byte_sizes(all_flows)
         tcp_sizes = flow_byte_sizes(tcp_flows)
         udp_sizes = flow_byte_sizes(udp_flows)
-        #  grapher.graph_CDF_alt([all_sizes, tcp_sizes, udp_sizes], ['All', 'TCP', 'UDP'], 'CDF of flow sizes in bytes', 'number of bytes in a flow', 'probability')
+        grapher.graph_CDF_alt([all_sizes, tcp_sizes, udp_sizes], ['All', 'TCP', 'UDP'], 'CDF of flow sizes in bytes', 'number of bytes in a flow', 'probability')
+
+        tcp_overhead_ratios = flow_overhead_ratios(tcp_flows)
+        grapher.graph_CDF_alt([tcp_overhead_ratios], ['TCP'], 'CDF of overhead ratios', 'overhead ratio', 'probability')
 
         # find interpacket arrival times
-        tcp_interpacket_times = flow_interpacket_arrival_times(tcp_flows_with_packets)
-        udp_interpacket_times = flow_interpacket_arrival_times(udp_flows_with_packets)
-        all_interpacket_times = flow_interpacket_arrival_times(all_flows_with_packets)
-        #  grapher.graph_CDF_alt([all_interpacket_times, tcp_interpacket_times, udp_interpacket_times], ['All', 'TCP', 'UDP'], 'CDF of interpacket arrival times', 'seconds', 'probability')
+        tcp_interpacket_times = flow_interpacket_arrival_times(tcp_flows)
+        udp_interpacket_times = flow_interpacket_arrival_times(udp_flows)
+        all_interpacket_times = flow_interpacket_arrival_times(all_flows)
+        grapher.graph_CDF_alt([all_interpacket_times, tcp_interpacket_times, udp_interpacket_times], ['All', 'TCP', 'UDP'], 'CDF of interpacket arrival times', 'seconds', 'probability')
 
 
 
