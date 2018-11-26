@@ -45,14 +45,18 @@ def map_packets_to_ack(tcp_flow):
     for i in range(tcp_flow.num_packets):
         cur_packet = tcp_flow.packets[i]
         #print 'seq={0}, ack={1}, len={2}, flag={3}'.format(cur_packet.seq, cur_packet.ack, cur_packet.data_length, format(cur_packet.flags, '#010b'))
-        if cur_packet.data_length > 0:
+        if cur_packet.data_length > 0 or cur_packet.flags & dpkt.tcp.TH_ACK != cur_packet.flags\
+                or cur_packet.flags & dpkt.tcp.TH_RST != cur_packet.flags:
             # packet contains data, thus may require a matching ACK
             # Except not really, see the Cumulative ACK case in the slides :D
             # But if that happens we ignore the first packet for the purpose of estimating RTT I guess
             # Or if the flow cuts off the ACK
             bigger_than_prev = False
 
-            expected_ack = cur_packet.seq + cur_packet.data_length
+            if cur_packet.flags & dpkt.tcp.TH_SYN or cur_packet.flags & dpkt.tcp.TH_FIN:
+                expected_ack = cur_packet.seq + 1
+            else:
+                expected_ack = cur_packet.seq + cur_packet.data_length
 
             src = tcp_flow.src
             src_port = tcp_flow.src_port
@@ -63,9 +67,11 @@ def map_packets_to_ack(tcp_flow):
             else:
                 bigger_than_prev = cur_packet.seq > max_fwd_seq
             pkt_tup = (cur_packet.seq, cur_packet.ack, cur_packet.data_length, cur_packet.time)
+            if not bigger_than_prev:
+                print 'NOT bigger than previous:', cur_packet.seq, max_rev_seq, max_fwd_seq
 
             chk_for_retrans = (cur_packet.seq, src, src_port)
-            if (not chk_for_retrans in retransmits) and bigger_than_prev:
+            if chk_for_retrans not in retransmits and bigger_than_prev:
                 # Not a retransmission
                 retransmits[chk_for_retrans] = 1 #Dummy value in dict 
                 packets_sent_map[expected_ack] = pkt_tup
@@ -128,8 +134,8 @@ if __name__ == '__main__':
         # flow1, flow2, flow2 is a tuple
         # first element is number of packets/bytes/duration
         # second element is the flow itself (as a list of FlowPacketTCP objects)
-        #flow1, flow2, flow3 = three_largest_flows_packet_number(tcp_flows)
-        #flow1, flow2, flow3 = three_largest_flows_byte_size(tcp_flows)
+        #  flow1, flow2, flow3 = three_largest_flows_packet_number(tcp_flows)
+        #  flow1, flow2, flow3 = three_largest_flows_byte_size(tcp_flows)
         flow1, flow2, flow3 = three_largest_flows_duration(tcp_flows)
         flows_largest_packet_number = [flow1, flow2, flow3]
         count = 1 

@@ -47,3 +47,24 @@ def graph_RTTs(EST_arr, OBS_arr, attribute="", num=0):
     ax.set_ylabel('RTT (ms)')
     plt.show()
 
+def graph_RTT_over_time(times1, rtts1, times2, rtts2, times3, rtts3):
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.plot(times1, rtts1)
+    ax.plot(times2, rtts2)
+    ax.plot(times2, rtts2)
+    ax.grid(True)
+    ax.legend(loc='right')
+    ax.set_title('Estimated RTT over time')
+    ax.set_xlabel('Time')
+    ax.set_ylabel('RTT (ms)')
+    plt.show()
+
+def graph_RTT_over_time(times, rtts):
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.plot(times, rtts)
+    ax.grid(True)
+    ax.legend(loc='right')
+    ax.set_title('Estimated RTT over time')
+    ax.set_xlabel('Time')
+    ax.set_ylabel('RTT (ms)')
+    plt.show()
