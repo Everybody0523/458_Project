@@ -35,11 +35,13 @@ def map_packets_to_ack(tcp_flow):
     print 'Mapping acks in the flow of length=', tcp_flow.num_packets
     # set of expected acks
     packets_sent_map = {}
-    # map of expected acks to a tuple: (packet, packet's ack)
-    ack_map = {}
+
+    # for detecting retransmissions
+    retransmits = {}
+    max_rev_seq = 0
+    max_fwd_seq = 0
     
     packets_and_their_acks = []
-
     for i in range(tcp_flow.num_packets):
         cur_packet = tcp_flow.packets[i]
         #print 'seq={0}, ack={1}, len={2}, flag={3}'.format(cur_packet.seq, cur_packet.ack, cur_packet.data_length, format(cur_packet.flags, '#010b'))
@@ -48,9 +50,31 @@ def map_packets_to_ack(tcp_flow):
             # Except not really, see the Cumulative ACK case in the slides :D
             # But if that happens we ignore the first packet for the purpose of estimating RTT I guess
             # Or if the flow cuts off the ACK
+            bigger_than_prev = False
+
             expected_ack = cur_packet.seq + cur_packet.data_length
+
+            src = tcp_flow.src
+            src_port = tcp_flow.src_port
+            if cur_packet.rev:
+                src = tcp_flow.dst
+                src_port = tcp_flow.dst_port
+                bigger_than_prev = cur_packet.seq > max_rev_seq
+            else:
+                bigger_than_prev = cur_packet.seq > max_fwd_seq
             pkt_tup = (cur_packet.seq, cur_packet.ack, cur_packet.data_length, cur_packet.time)
-            packets_sent_map[expected_ack] = pkt_tup
+
+            chk_for_retrans = (cur_packet.seq, src, src_port)
+            if (not chk_for_retrans in retransmits) and bigger_than_prev:
+                # Not a retransmission
+                retransmits[chk_for_retrans] = 1 #Dummy value in dict 
+                packets_sent_map[expected_ack] = pkt_tup
+            else:
+                # This is a retransmission, just drop the packet from the dict 
+                print "dropped"
+                if expected_ack in packets_sent_map:
+                    del packets_sent_map[expected_ack]
+
         if cur_packet.flags & dpkt.tcp.TH_ACK:
             # packet contains ACK, match it with an existing packet
             if cur_packet.ack in packets_sent_map:
@@ -104,8 +128,16 @@ if __name__ == '__main__':
         # flow1, flow2, flow2 is a tuple
         # first element is number of packets/bytes/duration
         # second element is the flow itself (as a list of FlowPacketTCP objects)
-        flow1, flow2, flow3 = three_largest_flows_packet_number(tcp_flows)
-        mapped_packs = map_packets_to_ack(flow1[1])
+        #flow1, flow2, flow3 = three_largest_flows_packet_number(tcp_flows)
+        #flow1, flow2, flow3 = three_largest_flows_byte_size(tcp_flows)
+        flow1, flow2, flow3 = three_largest_flows_duration(tcp_flows)
+        flows_largest_packet_number = [flow1, flow2, flow3]
+        count = 1 
+        for flow in flows_largest_packet_number:
+            mapped_packs = map_packets_to_ack(flow[1])
+            EST_arr, OBS_arr = compute_estimated_RTT(mapped_packs)
+            graph_me_daddy.graph_RTTs(EST_arr, OBS_arr, "Largest By Duration", count)
+            count += 1
         """
         count = 0
         for pair in mapped_packs:
@@ -115,8 +147,6 @@ if __name__ == '__main__':
                 print "Packet Time:{1} Ack Time:{0} Sample RTT:{2}".format(pair[0][3], pair[1][3], sample)
             count += 1
         """
-        EST_arr, OBS_arr = compute_estimated_RTT(mapped_packs)
-        graph_me_daddy.graph_RTTs(EST_arr, OBS_arr)
         """
         print 'Three largest flows by packet number:', flow1[0], flow2[0], flow3[0]
         flow1, flow2, flow3 = three_largest_flows_byte_size(tcp_flows)

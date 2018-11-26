@@ -30,8 +30,9 @@ class Flow:
     def flow_duration(self):
         return (self.last_timestamp - self.first_timestamp).total_seconds()
 
+
 class FlowPacket:
-    def __init__(self, time, total_length, link_hdr_length, ip_hdr_length, transport_hdr_length):
+    def __init__(self, time, total_length, link_hdr_length, ip_hdr_length, transport_hdr_length, rev=False):
         self.time = time
         # total length of the packet, including all headers
         self.total_length = total_length
@@ -39,6 +40,8 @@ class FlowPacket:
         self.ip_hdr_length = ip_hdr_length
         self.transport_hdr_length = transport_hdr_length
         self.data_length = total_length - link_hdr_length - ip_hdr_length - transport_hdr_length
+        self.rev = rev 
+
 
 class FlowPacketTCP(FlowPacket):
     def __init__(self, time, total_length, link_hdr_length, ip_hdr_length, transport_hdr_length, seq, ack, flags):

@@ -46,6 +46,7 @@ def add_flow_packet(flow_dict, src, dst, src_port, dst_port, new_packet):
     elif reverse_key in flow_dict:
         flow = flow_dict[reverse_key]
         key = reverse_key
+        new_packet.rev = True
 
     if flow:
         # update existing flow info
