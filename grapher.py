@@ -13,6 +13,7 @@ def graph_CDF(data_sets, data_labels, title, xlabel, ylabel):
     ax.set_ylabel(ylabel)
     plt.show()
 
+
 def graph_CDF_alt(data_sets, data_labels, title, xlabel, ylabel, lineLen=None):
     fig, ax = plt.subplots(figsize=(8, 4))
     for i in range(len(data_sets)):
@@ -32,14 +33,15 @@ def graph_CDF_alt(data_sets, data_labels, title, xlabel, ylabel, lineLen=None):
     ax.set_ylabel(ylabel)
     plt.show()
 
+
 def graph_RTTs(EST_arr, OBS_arr):
     fig, ax = plt.subplots(figsize=(8, 4))
-    ax.plot([i for i in range(len(EST_arr))], EST_arr, label='Estimated RTT')
     ax.plot([i for i in range(len(OBS_arr))], OBS_arr, label='Observed RTT')
+    ax.plot([i for i in range(len(EST_arr))], EST_arr, label='Estimated RTT', linewidth=1.75)
     ax.grid(True)
     ax.legend(loc='right')
     ax.set_title('RTT')
-    ax.set_xlabel('number of RTTs observed')
+    ax.set_xlabel('Time')
     ax.set_ylabel('RTT (ms)')
     plt.show()
 
