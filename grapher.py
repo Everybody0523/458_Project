@@ -30,3 +30,15 @@ def graph_CDF_alt(data_sets, data_labels, title, xlabel, ylabel, lineLen=None):
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     plt.show()
+
+def graph_RTTs(EST_arr, OBS_arr):
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.plot([i for i in range(len(EST_arr))], EST_arr, label='Estimated RTT')
+    ax.plot([i for i in range(len(OBS_arr))], OBS_arr, label='Observed RTT')
+    ax.grid(True)
+    ax.legend(loc='right')
+    ax.set_title('RTT')
+    ax.set_xlabel('number of RTTs observed')
+    ax.set_ylabel('RTT (ms)')
+    plt.show()
+
