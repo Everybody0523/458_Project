@@ -61,7 +61,7 @@ def graph_RTT_over_time(times1, rtts1, times2, rtts2, times3, rtts3):
 
 def graph_RTT_over_time(times, rtts):
     fig, ax = plt.subplots(figsize=(8, 4))
-    ax.plot(times, rtts)
+    ax.scatter(times, rtts)
     ax.grid(True)
     ax.legend(loc='right')
     ax.set_title('Estimated RTT over time')

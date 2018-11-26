@@ -45,8 +45,7 @@ def map_packets_to_ack(tcp_flow):
     for i in range(tcp_flow.num_packets):
         cur_packet = tcp_flow.packets[i]
         #print 'seq={0}, ack={1}, len={2}, flag={3}'.format(cur_packet.seq, cur_packet.ack, cur_packet.data_length, format(cur_packet.flags, '#010b'))
-        if cur_packet.data_length > 0 or cur_packet.flags & dpkt.tcp.TH_ACK != cur_packet.flags\
-                or cur_packet.flags & dpkt.tcp.TH_RST != cur_packet.flags:
+        if cur_packet.data_length > 0 or cur_packet.flags & dpkt.tcp.TH_ACK != cur_packet.flags and cur_packet.flags & dpkt.tcp.TH_RST != cur_packet.flags:
             # packet contains data, thus may require a matching ACK
             # Except not really, see the Cumulative ACK case in the slides :D
             # But if that happens we ignore the first packet for the purpose of estimating RTT I guess
@@ -67,17 +66,17 @@ def map_packets_to_ack(tcp_flow):
             else:
                 bigger_than_prev = cur_packet.seq > max_fwd_seq
             pkt_tup = (cur_packet.seq, cur_packet.ack, cur_packet.data_length, cur_packet.time)
-            if not bigger_than_prev:
-                print 'NOT bigger than previous:', cur_packet.seq, max_rev_seq, max_fwd_seq
+            #  if not bigger_than_prev:
+                #  print 'NOT bigger than previous:', cur_packet.seq, max_rev_seq, max_fwd_seq
 
             chk_for_retrans = (cur_packet.seq, src, src_port)
-            if chk_for_retrans not in retransmits and bigger_than_prev:
+            if chk_for_retrans not in retransmits and (True or bigger_than_prev):
                 # Not a retransmission
                 retransmits[chk_for_retrans] = 1 #Dummy value in dict 
                 packets_sent_map[expected_ack] = pkt_tup
             else:
                 # This is a retransmission, just drop the packet from the dict 
-                print "dropped"
+                #  print "dropped"
                 if expected_ack in packets_sent_map:
                     del packets_sent_map[expected_ack]
 
@@ -124,6 +123,14 @@ def compute_estimated_RTT(mapped_packs_to_acks):
         OBS_arr.append(sample_RTT.total_seconds() * 1000)
     return EST_arr, OBS_arr
                
+def graph_three_largest(flow1, flow2, flow3, name):
+    flows = [flow1, flow2, flow3]
+    count = 1 
+    for flow in flows:
+        mapped_packs = map_packets_to_ack(flow[1])
+        EST_arr, OBS_arr = compute_estimated_RTT(mapped_packs)
+        graph_me_daddy.graph_RTTs(EST_arr, OBS_arr, "Largest By " + name, count)
+        count += 1
  
 
 if __name__ == '__main__':
@@ -134,16 +141,15 @@ if __name__ == '__main__':
         # flow1, flow2, flow2 is a tuple
         # first element is number of packets/bytes/duration
         # second element is the flow itself (as a list of FlowPacketTCP objects)
-        #  flow1, flow2, flow3 = three_largest_flows_packet_number(tcp_flows)
-        #  flow1, flow2, flow3 = three_largest_flows_byte_size(tcp_flows)
+        flow1, flow2, flow3 = three_largest_flows_packet_number(tcp_flows)
+        print 'Three largest flows by packet number: {0}, {1}, {2}'.format(flow1[0], flow2[0], flow3[0])
+        graph_three_largest(flow1, flow2, flow3, 'packet number')
+        flow1, flow2, flow3 = three_largest_flows_byte_size(tcp_flows)
+        print 'Three largest flows by byte size:', flow1[0], flow2[0], flow3[0]
+        graph_three_largest(flow1, flow2, flow3, 'byte size')
         flow1, flow2, flow3 = three_largest_flows_duration(tcp_flows)
-        flows_largest_packet_number = [flow1, flow2, flow3]
-        count = 1 
-        for flow in flows_largest_packet_number:
-            mapped_packs = map_packets_to_ack(flow[1])
-            EST_arr, OBS_arr = compute_estimated_RTT(mapped_packs)
-            graph_me_daddy.graph_RTTs(EST_arr, OBS_arr, "Largest By Duration", count)
-            count += 1
+        print 'Three largest flows by duration:', flow1[0], flow2[0], flow3[0]
+        graph_three_largest(flow1, flow2, flow3, 'duration')
         """
         count = 0
         for pair in mapped_packs:
@@ -154,7 +160,6 @@ if __name__ == '__main__':
             count += 1
         """
         """
-        print 'Three largest flows by packet number:', flow1[0], flow2[0], flow3[0]
         flow1, flow2, flow3 = three_largest_flows_byte_size(tcp_flows)
         print 'Three largest flows by byte size:', flow1[0], flow2[0], flow3[0]
         flow1, flow2, flow3 = three_largest_flows_duration(tcp_flows)
